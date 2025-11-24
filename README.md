@@ -15,6 +15,7 @@ cd VCCRacing
 
 [Download Demo Map](https://drive.google.com/file/d/116lsc7qDcgMXCCkG5WTnyUYrWYFM1lwj/view?usp=sharing)
 
+[Download Map Round 1](https://drive.google.com/file/d/1GswpEp--cFBgcNDJP3Fh3zXBGIS1uMC7/view?usp=sharing)
 
 
 ## Installation
