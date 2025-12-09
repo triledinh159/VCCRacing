@@ -36,6 +36,7 @@ python client.py
 python collect_data.py 
 ```
 The tree is somehow like:
+```bash
 dataset/
 ├── part_<timestamp_a>/
 │   ├── frame_00000.png
@@ -45,6 +46,7 @@ dataset/
     ├── frame_00000.png
     ├── frame_00001.png
     └── ...
+```
 #### The `part_...` is the name of the new dataset folder that is created each time the collect_data.py is run.
 ### IF YOU JUST BE HERE FOR COLLECTING DATA, YOU CAN STOP READING FROM THIS LINE.
 ### Run with custom port (Run this when port of the app not listen on 11000 by default)
