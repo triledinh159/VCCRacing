@@ -403,6 +403,15 @@ def calculate_steering_angle(segmented_image: np.ndarray) -> Tuple[int, np.ndarr
     #            cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 2)
 
     return steering_angle, vis_image
+
+def extract_real_road(raw, seg):
+    """Extract real road pixels based on segmentation colors"""
+    lower = np.array([240, 10, 165])
+    upper = np.array([255, 35, 195])
+    mask = cv2.inRange(seg, lower, upper)
+    road_real = cv2.bitwise_and(raw, raw, mask=mask)
+    return mask, road_real
+
 import os
 import csv
 
@@ -443,15 +452,18 @@ def main():
 
                 # Calculate steering angle from segmented image
                 steering_angle, vis_image = calculate_steering_angle(segmented_image)
-
+                mask, road_real = extract_real_road(raw_image, segmented_image)
                 # Display data
                 # print(f"[DATA] State: {state}")
                 print(f"[CONTROL] Steering angle: {steering_angle}, Speed input: {state['Speed']}, Angle input: {state['Angle']}")
-                #cv2.imshow('Raw Camera', raw_image)
-                cv2.imshow('Steering Visualization', vis_image)
+                cv2.imshow('Raw Camera', raw_image)
+                cv2.imshow('Just Road', road_real)
+                # cv2.imshow('Segmented Camera', mask)
+                # cv2.imshow('Steering Visualization', vis_image)
                 filename = f"frame_{frame_id:05d}.png"
-                cv2.imwrite(os.path.join(images_dir, filename), vis_image)
-
+                # mask_name = f"mask_{frame_id:05d}.png"
+                cv2.imwrite(os.path.join(images_dir, filename), road_real)
+                # cv2.imwrite(os.path.join(images_dir, mask_name), mask)
                 # --- Append to CSV ---
                 with open(csv_file, mode='a', newline='') as f:
                     writer = csv.writer(f)
