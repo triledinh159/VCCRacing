@@ -24,13 +24,18 @@ pip install -r requirements.txt
 ```
 
 ## Quick Start
-
+### RUN THE APP `VCCRacing.exe` before init python command
 ### Run with default settings (localhost:11000)
 ```bash
 python client.py
 ```
 
-### Run with custom port
+```bash
+# To collect data:
+python collect_data.py 
+```
+
+### Run with custom port (Run this when port of the app not listen on 11000 by default)
 ```bash
 python client.py 11001
 ```
