@@ -7,16 +7,17 @@ Python client for connecting to autonomous vehicle simulation server.
 ### Clone the Repository
 
 ```bash
-git clone https://github.com/phonghongs/VCCRacing.git
+git clone https://github.com/triledinh159/VCCRacing.git
 cd VCCRacing
 ```
 
 ## Demo Map
 
 [Download Map](https://drive.google.com/drive/folders/11aVo2YRB26ctLSV_uloT1B4OUmtLQtIp?usp=sharing)
-
-
-
+There are 3 maps for 3 rounds
+  - Round 1: Sprint (Speed)
+  - Round 2: Perception (Traffic sign detection)
+  - Round 3: 1 + 2 + Obstacles
 ## Installation
 
 ```bash
@@ -34,6 +35,22 @@ python client.py
 # To collect data:
 python collect_data.py 
 ```
+The tree is somehow like:
+.
+└── dataset/
+    ├── part_<timestamp_a>/
+    │   ├── ./
+    │   ├── ../
+    │   ├── frame_00000.png
+    │   ├── frame_00001.png
+    │   └── ...
+    └── part_<timestamp_a>/
+        ├── ./
+        ├── ../
+        ├── frame_00000.png
+        ├── frame_00001.png
+        └── ...
+#### The `part_...` is the name of the new dataset folder that is created each time the collect_data.py is run.
 ### IF YOU JUST BE HERE FOR COLLECTING DATA, YOU CAN STOP READING FROM THIS LINE.
 ### Run with custom port (Run this when port of the app not listen on 11000 by default)
 ```bash
