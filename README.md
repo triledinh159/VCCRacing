@@ -34,7 +34,7 @@ python client.py
 # To collect data:
 python collect_data.py 
 ```
-
+### IF YOU JUST BE HERE FOR COLLECTING DATA, YOU CAN STOP READING FROM THIS LINE.
 ### Run with custom port (Run this when port of the app not listen on 11000 by default)
 ```bash
 python client.py 11001
