@@ -412,6 +412,25 @@ def extract_real_road(raw, seg):
     road_real = cv2.bitwise_and(raw, raw, mask=mask)
     return mask, road_real
 
+
+def save_yolo_mask(mask, txt_path):
+    cnts, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    if not cnts:
+        return
+
+    cnt = max(cnts, key=cv2.contourArea)
+
+    h, w = mask.shape[:2]
+    pts = []
+
+    for p in cnt.reshape(-1, 2):
+        x, y = p
+        pts.append(f"{x / w:.6f} {y / h:.6f}")
+
+    with open(txt_path, "w") as f:
+        f.write("0 " + " ".join(pts))
+
 import os
 import csv
 
@@ -436,7 +455,8 @@ def main():
 
     # --- Inside your main loop ---
     frame_id = 0  # increment each loop
-
+    labels_dir = images_dir.replace("images", "labels")
+    os.makedirs(labels_dir, exist_ok=True)
     try:
         with AVClient(host=args.host, port=args.port, timeout=args.timeout) as client:
             print("[INFO] Starting main loop. Press 'q' to exit.\n")
@@ -457,12 +477,17 @@ def main():
                 # print(f"[DATA] State: {state}")
                 print(f"[CONTROL] Steering angle: {steering_angle}, Speed input: {state['Speed']}, Angle input: {state['Angle']}")
                 cv2.imshow('Raw Camera', raw_image)
-                cv2.imshow('Just Road', road_real)
+                cv2.imshow('Just Road', mask)
                 # cv2.imshow('Segmented Camera', mask)
                 # cv2.imshow('Steering Visualization', vis_image)
                 filename = f"frame_{frame_id:05d}.png"
-                # mask_name = f"mask_{frame_id:05d}.png"
-                cv2.imwrite(os.path.join(images_dir, filename), road_real)
+
+                image_path = os.path.join(images_dir, filename)
+                label_path = image_path.replace("images", "labels").replace(".png", ".txt")
+
+                cv2.imwrite(image_path, raw_image)  # <-- use raw or use road_real (your choice)
+
+                save_yolo_mask(mask, label_path)
                 # cv2.imwrite(os.path.join(images_dir, mask_name), mask)
                 # --- Append to CSV ---
                 with open(csv_file, mode='a', newline='') as f:
