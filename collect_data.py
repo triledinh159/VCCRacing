@@ -1,9 +1,7 @@
-"""
-Autonomous Vehicle Client
 
-A client for connecting to and controlling an autonomous vehicle simulation,
-retrieving state data and camera images (raw and segmented).
-"""
+import os
+import csv
+
 
 import socket
 import json
@@ -325,6 +323,7 @@ Examples:
     return parser.parse_args()
 
 
+
 def calculate_steering_angle(segmented_image: np.ndarray) -> Tuple[int, np.ndarray]:
     """
     Calculate steering angle based on segmented lane image.
@@ -412,106 +411,80 @@ def extract_real_road(raw, seg):
     road_real = cv2.bitwise_and(raw, raw, mask=mask)
     return mask, road_real
 
-
-def save_yolo_mask(mask, txt_path):
-    cnts, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-    if not cnts:
-        return
-
-    cnt = max(cnts, key=cv2.contourArea)
-
-    h, w = mask.shape[:2]
-    pts = []
-
-    for p in cnt.reshape(-1, 2):
-        x, y = p
-        pts.append(f"{x / w:.6f} {y / h:.6f}")
-
-    with open(txt_path, "w") as f:
-        f.write("0 " + " ".join(pts))
-
-import os
-import csv
-
 def main():
-    """Main execution loop for AV client demonstration."""
     args = parse_arguments()
-
-    print(f"[CONFIG] Connecting to {args.host}:{args.port} (timeout: {args.timeout}s)")
     import time
-    # --- Setup folders and CSV file ---
-    dataset_dir = "dataset"
-    images_dir = os.path.join(dataset_dir, f"part_{time.time()}")
-    os.makedirs(images_dir, exist_ok=True)
+    import csv
+    import os
 
-    csv_file = os.path.join(dataset_dir, f"labels_part_{time.time()}.csv")
+    run_id = int(time.time())
 
-    # If CSV does not exist, create it with header
-    if not os.path.exists(csv_file):
-        with open(csv_file, mode='w', newline='') as f:
-            writer = csv.writer(f)
-            writer.writerow(["filename", "steering_angle", "speed", "sim_angle"])
+    base_dir = f"dataset/run_{run_id}"
+    img_dir = os.path.join(base_dir, "images")
+    mask_dir = os.path.join(base_dir, "masks")
 
-    # --- Inside your main loop ---
-    frame_id = 0  # increment each loop
-    labels_dir = images_dir.replace("images", "labels")
-    os.makedirs(labels_dir, exist_ok=True)
-    try:
-        with AVClient(host=args.host, port=args.port, timeout=args.timeout) as client:
-            print("[INFO] Starting main loop. Press 'q' to exit.\n")
-            while True:
-                # print("[LOOP] Fetching vehicle data...")
+    os.makedirs(img_dir, exist_ok=True)
+    os.makedirs(mask_dir, exist_ok=True)
 
-                # Your application logic here
+    csv_path = os.path.join(base_dir, "labels.csv")
 
-                # Retrieve vehicle data
-                state = client.get_state_data()
-                raw_image = client.get_raw_image()
-                segmented_image = client.get_segmented_image()
+    with open(csv_path, "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow([
+            "frame_id",
+            "timestamp",
+            "steering_label",
+            "speed_limit",
+        ])
 
-                # Calculate steering angle from segmented image
-                steering_angle, vis_image = calculate_steering_angle(segmented_image)
-                mask, road_real = extract_real_road(raw_image, segmented_image)
-                # Display data
-                # print(f"[DATA] State: {state}")
-                print(f"[CONTROL] Steering angle: {steering_angle}, Speed input: {state['Speed']}, Angle input: {state['Angle']}")
-                cv2.imshow('Raw Camera', raw_image)
-                cv2.imshow('Just Road', mask)
-                # cv2.imshow('Segmented Camera', mask)
-                # cv2.imshow('Steering Visualization', vis_image)
-                filename = f"frame_{frame_id:05d}.png"
+    frame_id = 0
 
-                image_path = os.path.join(images_dir, filename)
-                label_path = image_path.replace("images", "labels").replace(".png", ".txt")
+    with AVClient(host=args.host, port=args.port, timeout=args.timeout) as client:
+        print("[INFO] Collecting driving data. Press q to stop.")
+        prev_label = 0
+        while True:
+            ts = time.time()
 
-                cv2.imwrite(image_path, raw_image)  # <-- use raw or use road_real (your choice)
+            state = client.get_state_data()
+            raw = client.get_raw_image()
+            seg = client.get_segmented_image()
 
-                save_yolo_mask(mask, label_path)
-                # cv2.imwrite(os.path.join(images_dir, mask_name), mask)
-                # --- Append to CSV ---
-                with open(csv_file, mode='a', newline='') as f:
-                    writer = csv.writer(f)
-                    writer.writerow([filename, steering_angle, state['Speed'], state['Angle']])
+            steering_label = state["Angle"]
+            alpha = 0.3
+            steering_label = alpha * steering_label + (1 - alpha) * prev_label
+            prev_label = steering_label
+            mask, _ = extract_real_road(raw, seg)
 
-                frame_id += 1
-                # Send control commands (max speed: 90, max angle: ±25)
-                # client.set_control(speed=20, angle=steering_angle)
+            img_name = f"{frame_id:06d}.png"
+            mask_name = f"{frame_id:06d}.png"
 
-                # Exit on 'q' key
-                key = cv2.waitKey(1)
-                if key == ord('q'):
-                    print("[INFO] Exit requested by user")
-                    break
+            cv2.imwrite(os.path.join(img_dir, img_name), raw)
+            cv2.imwrite(os.path.join(mask_dir, mask_name), mask)
+            print(f"State: {state}")
+            with open(csv_path, "a", newline="") as f:
+                writer = csv.writer(f)
+                writer.writerow([
+                    frame_id,
+                    ts,
+                    steering_label,
+                    state["Speed"],     # speed LIMIT
+                ])
 
-    except KeyboardInterrupt:
-        print("\nInterrupted by user")
-    except AVClientError as e:
-        print(f"AV Client error: {e}")
-    except Exception as e:
-        print(f"Unexpected error: {e}")
-    finally:
-        cv2.destroyAllWindows()
+            print(
+                f"[LOG] frame={frame_id} "
+                f"steer={steering_label} "
+                f"speed_lim={state['Speed']}"
+            )
+
+            frame_id += 1
+
+            cv2.imshow("raw", raw)
+            cv2.imshow("mask", mask)
+
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+
+    cv2.destroyAllWindows()
 
 
 if __name__ == "__main__":
